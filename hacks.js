@@ -1,15 +1,20 @@
+var EventEmitter = require('events').EventEmitter
+var util = require('util')
+
 var winston = require('winston');
 winston.add(winston.transports.File, { filename: 'log.txt' });
 winston.remove(winston.transports.Console);
-
 var log = winston.info.bind(winston)
 log('starting log')
 
-var Thing = function(x,y,c) {
+var Thing = function(screen,x,y,c,desc) {
+    this.screen = screen
     this.x = x
     this.y = y
     this.c = c
+    this.desc = desc
 }
+util.inherits(Thing, EventEmitter)
 Thing.prototype.update_pos = function(x,y) {
     this.x = x
     this.y = y
@@ -48,7 +53,7 @@ Screen.prototype.handle_input = function(buf) {
     return chr
 }
 Screen.prototype.draw_thing = function(thing) {
-    log(thing.x, thing.y)
+    log('drawing '+thing.desc+' at '+thing.x+','+thing.y)
     this.charm.position(thing.x, thing.y)
         .write(thing.c)
 }
@@ -61,7 +66,6 @@ Screen.prototype.key = function(k, cb) {
     }.bind(this))
 }
 Screen.prototype.move_thing = function(thing, delta) {
-    this.message('moving '+ delta.join(','))
     var dx = delta[0]
     var dy = delta[1]
     var cx = thing.x
@@ -69,12 +73,16 @@ Screen.prototype.move_thing = function(thing, delta) {
     var px = cx + dx
     var py = cy + dy
 
-    var blocked = this.things.filter(function(t) {
+    var blocking = this.things.filter(function(t) {
         return t.x === px && t.y === py
-    }).length !== 0
-    if (!blocked) {
+    })
+    if (blocking.length === 0) {
         thing.x = px
         thing.y = py
+    }
+    else {
+        var blocked = blocking[0]
+        blocked.emit('collision', thing, delta)
     }
 }
 Screen.prototype.add_thing = function(thing) { this.things.push(thing) }
@@ -99,7 +107,7 @@ Screen.prototype.remove_thing = function(thing) {
 }
 Screen.prototype.message = function(msg) {
     this.clear_message()
-    var msg_thing = new Thing(0,0,msg)
+    var msg_thing = new Thing(this, 0,0,msg)
     this.add_thing(msg_thing)
     this.msg_thing = msg_thing
 }
@@ -110,19 +118,75 @@ Screen.prototype.clear_message = function() {
 }
 
 var screen = new Screen()
-var player = new Thing(6,6,'@')
+var player = new Thing(screen, 6,6,'@')
+player.on('collision', function(thing) {
+    this.screen.message(thing.desc+' bumps into you.')
+
+}.bind(player))
+
+var Barrel = function(screen, x,y) {
+    Thing.call(this, screen, x, y, '#', 'a wall')
+
+    this.on('collision', function() {
+        this.screen.message('you bump into a barrel')
+    })
+}
+util.inherits(Barrel, Thing)
+
+var dummy = new Thing(screen, 9, 6, 'd', 'a test dummy')
+dummy.health = 5
+dummy.on('collision', function(thing) {
+    if (thing === player) {
+        this.screen.message('you hit the dummy.')
+        this.health--
+        if (this.health === 0) {
+            this.screen.message('you destroy the dummy.')
+            this.screen.remove_thing(this)
+        }
+    }
+}.bind(dummy))
+screen.add_thing(dummy)
+
+var box = new Thing(screen, 10,6, 'o', 'a box')
+box.on('collision', function(thing, force) {
+    var who = thing === player ? 'you push' : thing.desc + ' pushes'
+    this.screen.message(who +' on the box')
+    this.screen.move_thing(this, force)
+}.bind(box))
+screen.add_thing(box)
+
+var p_f = new Thing(screen, 5, 10, 'p', 'Prontobious Flustko')
+p_f.on('collision', function(thing) {
+    if (thing === player) {
+        this.screen.message('Prontobious says, "Excuse me."')
+    }
+})
+var current_pos = 0
+setInterval(function() {
+    var movements = [
+        [1,0],
+        [1,0],
+        [0,1],
+        [-1,0],
+        [-1,0],
+        [0,-1]
+    ]
+    current_pos = (current_pos + 1) % movements.length
+    screen.move_thing(p_f, movements[current_pos])
+}, 2000)
+screen.add_thing(p_f)
 
 // make a tunnel
-screen.add_thing(new Thing(5,5, '#'))
-screen.add_thing(new Thing(6,5, '#'))
-screen.add_thing(new Thing(7,5, '#'))
-screen.add_thing(new Thing(8,5, '#'))
-screen.add_thing(new Thing(9,5, '#'))
-screen.add_thing(new Thing(5,7, '#'))
-screen.add_thing(new Thing(6,7, '#'))
-screen.add_thing(new Thing(7,7, '#'))
-screen.add_thing(new Thing(8,7, '#'))
-screen.add_thing(new Thing(9,7, '#'))
+screen.add_thing(new Barrel(screen, 5,5))
+screen.add_thing(new Barrel(screen, 6,5))
+screen.add_thing(new Barrel(screen, 7,5))
+screen.add_thing(new Barrel(screen, 8,5))
+screen.add_thing(new Barrel(screen, 9,5))
+screen.add_thing(new Barrel(screen, 5,7))
+screen.add_thing(new Barrel(screen, 6,7))
+screen.add_thing(new Barrel(screen, 7,7))
+screen.add_thing(new Barrel(screen, 8,7))
+screen.add_thing(new Barrel(screen, 9,7))
 
 var move_p = screen.move_thing.bind(screen, player)
 screen.key('h', move_p.bind({}, [-1,0]))
