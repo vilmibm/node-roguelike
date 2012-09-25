@@ -43,6 +43,8 @@ Screen.prototype.handle_input = function(buf) {
     //log('i: '+i)
     //log('key: '+key)
 
+    if (i === 32) { return 'Space' }
+
     return chr
 }
 Screen.prototype.draw_thing = function(thing) {
@@ -52,11 +54,14 @@ Screen.prototype.draw_thing = function(thing) {
 }
 Screen.prototype.key = function(k, cb) {
     this.charm.on('data', function(buf) {
+        if (this.drawing) { return }
         var _k = this.handle_input(buf)
+        log('handled key: ' + _k)
         if (_k === k) { cb() }
     }.bind(this))
 }
 Screen.prototype.move_thing = function(thing, delta) {
+    this.message('moving '+ delta.join(','))
     var dx = delta[0]
     var dy = delta[1]
     var cx = thing.x
@@ -75,10 +80,33 @@ Screen.prototype.move_thing = function(thing, delta) {
 Screen.prototype.add_thing = function(thing) { this.things.push(thing) }
 Screen.prototype.start = function(speed) {
     this.main_loop = setInterval(function() {
-        log(this.things)
+        log('pausing to draw screen')
+        process.stdin.pause()
+        this.drawing = true
         this.charm.reset()
         this.things.forEach(this.draw_thing.bind(this))
+        this.charm.position(100,100)
+        log('resuming input')
+        process.stdin.resume()
+        this.drawing = false
     }.bind(this), speed || this.speed)
+}
+Screen.prototype.remove_thing = function(thing) {
+    this.things = this.things.filter(function(o,i) {
+        return o !== thing
+    })
+    return thing
+}
+Screen.prototype.message = function(msg) {
+    this.clear_message()
+    var msg_thing = new Thing(0,0,msg)
+    this.add_thing(msg_thing)
+    this.msg_thing = msg_thing
+}
+Screen.prototype.clear_message = function() {
+    if (!this.msg_thing) { return }
+    this.remove_thing(this.msg_thing)
+    delete this.msg_thing
 }
 
 var screen = new Screen()
@@ -96,8 +124,6 @@ screen.add_thing(new Thing(7,7, '#'))
 screen.add_thing(new Thing(8,7, '#'))
 screen.add_thing(new Thing(9,7, '#'))
 
-//screen.add_thing(new Thing(x,y+2, '#'))
-
 var move_p = screen.move_thing.bind(screen, player)
 screen.key('h', move_p.bind({}, [-1,0]))
 screen.key('j', move_p.bind({}, [0,1]))
@@ -109,4 +135,8 @@ screen.key('n', move_p.bind({}, [-1, 1]))
 screen.key('m', move_p.bind({}, [1, 1]))
 screen.add_thing(player)
 
+screen.key('Space', screen.clear_message.bind(screen))
+
 screen.start()
+
+screen.message('welcome to node-roguelike')
