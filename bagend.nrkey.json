@@ -1,0 +1,13 @@
+{
+    "entities": [
+        [[18,3], 'Chair'],
+        [[19,3], 'Chair'],
+        [[16,5], 'Chair'],
+        [[16,6], 'Chair'],
+        [[28,3], 'Kitchenware'],
+        [[28,4], 'Kitchenware'],
+        [[28,5], 'Kitchenware'],
+        [[28,6], 'Kitchenware'],
+        [[28,7], 'Kitchenware']
+    ]
+}
