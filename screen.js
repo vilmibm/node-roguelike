@@ -29,6 +29,7 @@ Screen.prototype.handle_input = function(buf) {
     //log('key: '+key)
 
     if (i === 32) { return 'Space' }
+    if (chr === '\r') { return 'Return' }
 
     return chr
 }
@@ -83,6 +84,10 @@ Screen.prototype.start = function(speed) {
         this.drawing = false
     }.bind(this), speed || this.speed)
 }
+Screen.prototype.pause = function() {
+    log('pausing animation loop')
+    clearInterval(this.main_loop)
+}
 Screen.prototype.remove_thing = function(thing) {
     this.things = this.things.filter(function(o,i) {
         return o !== thing
@@ -99,6 +104,61 @@ Screen.prototype.clear_message = function() {
     if (!this.msg_thing) { return }
     this.remove_thing(this.msg_thing)
     delete this.msg_thing
+}
+Screen.prototype.dialog = function(text) {
+    this.pause()
+    process.stdin.pause()
+    // IDEA modes; wherein classes of key listeners are disabled/enabled.
+    // want a scrollable msg box. for now, just display the text.
+    for (var x = 10; x < 51; x++) {
+        this.charm.position(x, 10)
+        this.charm.write('-')
+    }
+    for (var y = 10; y < 21; y++) {
+        this.charm.position(10, y)
+        this.charm.write('|')
+    }
+    for (var x = 10; x < 51; x++) {
+        this.charm.position(x, 20)
+        this.charm.write('-')
+    }
+    for (var y = 10; y < 21; y++) {
+        this.charm.position(50, y)
+        this.charm.write('|')
+    }
+    [[10,10], [10,20], [50,10], [50, 20]].forEach(function(p) {
+        this.charm.position(p[0], p[1])
+        this.charm.write('*')
+    }.bind(this))
+    this.charm.position(11,11)
+    var width = 38
+    var words = text.split(' ')
+
+    var self = this
+    var write = function(words, line_num, line) {
+        if (words.length === 0) {
+            log('DONE')
+            self.charm.position(11, line_num)
+            self.charm.write(line)
+        }
+        else if ((line + words[0]).length > width) {
+            log('NEXT LINE')
+            self.charm.position(11, line_num)
+            self.charm.write(line)
+            return write(words, line_num + 1, '')
+        }
+        else {
+            line += ' '+words.shift()
+            log(line)
+
+            return write(words, line_num, line)
+        }
+    }
+    write(words, 11, '')
+    process.stdin.resume()
+    //console.log(this)
+    //write.bind(this, words, 11, '')()
+    //this.charm.write(text)
 }
 
 module.exports = {
