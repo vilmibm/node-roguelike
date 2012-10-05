@@ -160,6 +160,10 @@ Screen.prototype.dialog = function(text) {
     //write.bind(this, words, 11, '')()
     //this.charm.write(text)
 }
+Screen.prototype.clear_dialog = function() {
+    this.charm.reset()
+    this.start()
+}
 
 module.exports = {
     Screen: Screen

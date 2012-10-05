@@ -10,6 +10,7 @@ var Pontobious = things.Pontobious
 
 log('starting log')
 var screen = new Screen()
+screen.charm.setMaxListeners(0)
 
 var player = new Thing(screen, 6,6,'@')
 player.on('collision', function(thing) {
@@ -36,12 +37,26 @@ for (var x = 5; x<20; x++) {
 // add some items
 screen.add_thing(new Box(screen, 21,6))
 screen.add_thing(new Dummy(screen, 20,6))
+var parchment = new Thing(screen, 20, 14, 'b', 'a tattered parchment')
+parchment.on('collision', function() {
+    this.screen.dialog(
+"Tea leaves thwart those who court catastrophe,"
++"designing futures where nothing will occur:"
++"cross the gypsy’s palm and yawning she"
++"will still predict no perils left to conquer."
++"Jeopardy is jejune now: naïve knight"
++"finds ogres out-of-date and dragons unheard"
++"of, while blasé princesses indict"
++"tilts at terror as downright absurd.")
+})
+screen.add_thing(parchment)
 
 // add an NPC
 var npc = new Pontobious(screen, 10, 10)
 screen.add_thing(npc)
 
 screen.key('Space', screen.clear_message.bind(screen))
+screen.key('Return', screen.clear_dialog.bind(screen))
 screen.start()
 npc.start_pacing()
 screen.message('welcome to node-roguelike')
