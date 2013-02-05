@@ -1,12 +1,17 @@
-var EventEmitter = require('events').EventEmitter
-var util = require('util')
+var EventEmitter = require('events').EventEmitter;
+var util = require('util');
 
 var Thing = function(screen,x,y,c,desc) {
     this.screen = screen
     this.x = x
     this.y = y
     this.c = c
-    this.desc = desc
+    this.desc = desc;
+    this.on('collision', function(thing) {
+        if (thing === this.screen.player) {
+            this.screen.message('you bump into '+this.desc);
+        }
+    }.bind(this));
 }
 util.inherits(Thing, EventEmitter)
 
